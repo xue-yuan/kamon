@@ -1,113 +1,279 @@
-import { For, createSignal, Show, onMount, createMemo } from 'solid-js';
-import { KAMON_DATA } from './data';
+import { For, Show, Switch, Match, createSignal, createMemo, createEffect, onMount, onCleanup } from 'solid-js';
+import { Portal } from 'solid-js/web';
+import { KAMON_FAMILIES } from './data';
+import { ALL_GROUPS, CATEGORIES, ERA_BUCKETS, searchTerms } from './taxonomy';
+import { CREST_INDEX, CREST_COUNT, SEARCH_INDEX, filterFamilies } from './catalog';
+import { HOME_URL, crestUrl, crestIdFromLocation } from './routes';
+import { LANGS, lang, setLang, t, term, groupLabel, eraBucketLabel, familyName } from './i18n';
+import { Detail } from './components/Detail';
+import { GalleryView } from './views/GalleryView';
+import { MapView } from './views/MapView';
 import './index.css';
 
-function KamonCard(props) {
-  return (
-    <div class="kamon-card" onClick={() => props.onSelect(props.kamon)}>
-      <div class="kamon-svg-container">
-        <svg viewBox={props.kamon.viewBox} xmlns="http://www.w3.org/2000/svg">
-          <path
-            class="kamon-path"
-            d={props.kamon.path}
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            pathLength="1"
-          />
-        </svg>
-      </div>
-      <div class="kamon-info">
-        <div class="kamon-name-ja">{props.kamon.nameJa}</div>
-        <div class="kamon-name-en">{props.kamon.nameEn}</div>
-        <div class="daimyo-name">{props.kamon.daimyo}</div>
-      </div>
-    </div>
-  );
+const VIEWS = [
+  { id: 'gallery', labelKey: 'viewGallery' },
+  { id: 'map', labelKey: 'viewMap' },
+];
+
+function viewFromUrl() {
+  const view = new URLSearchParams(location.search).get('view');
+  return VIEWS.some((v) => v.id === view) ? view : 'gallery';
 }
 
-function Modal(props) {
+function ChipRow(props) {
   return (
-    <div class="modal-overlay" onClick={props.onClose}>
-      <div class="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button class="modal-close" onClick={props.onClose}>✕</button>
-        <div class="modal-svg-large">
-          <svg viewBox={props.kamon.viewBox} xmlns="http://www.w3.org/2000/svg">
-            <path
-              class="kamon-path"
-              d={props.kamon.path}
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              pathLength="1"
-              style={{ "stroke-dashoffset": "0", "transition-delay": "0.2s" }}
-            />
-          </svg>
-        </div>
-        <div class="kamon-info">
-          <div class="kamon-name-ja" style={{ "font-size": "2.5rem" }}>{props.kamon.nameJa}</div>
-          <div class="kamon-name-en" style={{ "font-size": "1.2rem", "margin-bottom": "1.5rem" }}>{props.kamon.nameEn}</div>
-          <div class="kamon-tags">
-            <span class="kamon-tag">{props.kamon.class}</span>
-            <span class="kamon-tag">{props.kamon.clan}</span>
-            <span class="kamon-tag">{props.kamon.category}</span>
-            <span class="kamon-tag">{props.kamon.usage}</span>
-          </div>
-          <div class="daimyo-name" style={{ "font-size": "1.2rem", color: "var(--accent-gold)" }}>{props.kamon.daimyo}</div>
-          <p style={{ "margin-top": "2rem", "max-width": "500px", "line-height": "1.8", color: "var(--text-secondary)", "font-family": "var(--font-serif)" }}>
-            這是 {props.kamon.clan} 代表人物 {props.kamon.daimyo.split(' ')[0]} 所使用的家徽。
-            歷史上的家徽不僅是家族代表，更象徵著傳統與威信。
-          </p>
-        </div>
+    <div class="chip-row" role="group" aria-label={props.label}>
+      <span class="chip-row__label">{props.label}</span>
+      <div class="chip-row__chips">
+        <button
+          type="button"
+          class="chip"
+          classList={{ 'is-active': !props.value }}
+          aria-pressed={!props.value}
+          onClick={() => props.onChange(null)}
+        >
+          {t('all')}
+        </button>
+        <For each={props.options}>
+          {(option) => (
+            <button
+              type="button"
+              class="chip"
+              classList={{ 'is-active': props.value === option.id, 'is-empty': !option.count }}
+              aria-pressed={props.value === option.id}
+              disabled={!option.count && props.value !== option.id}
+              onClick={() => props.onChange(props.value === option.id ? null : option.id)}
+            >
+              {option.label}
+              <span class="chip__count">{option.count}</span>
+            </button>
+          )}
+        </For>
       </div>
     </div>
   );
 }
 
 function App() {
-  const [items] = createSignal(KAMON_DATA);
-  const [selectedKamon, setSelectedKamon] = createSignal(null);
-  const [selectedClass, setSelectedClass] = createSignal('全部');
+  const [query, setQuery] = createSignal('');
+  const [group, setGroup] = createSignal(null);
+  const [category, setCategory] = createSignal(null);
+  const [era, setEra] = createSignal(null);
+  const [selectedId, setSelectedId] = createSignal(crestIdFromLocation());
+  const [view, setView] = createSignal(viewFromUrl());
 
-  const classes = ['全部', ...new Set(KAMON_DATA.map(k => k.class))];
-
-  const filteredItems = createMemo(() => {
-    if (selectedClass() === '全部') {
-      return items();
-    }
-    return items().filter(k => k.class === selectedClass());
+  let pushedHistory = false;
+  const syncFromLocation = () => {
+    const id = crestIdFromLocation();
+    if (id && location.hash) history.replaceState(null, '', crestUrl(id) + location.search);
+    setSelectedId(id);
+    setView(viewFromUrl());
+  };
+  onMount(() => {
+    syncFromLocation();
+    const onPopState = () => {
+      pushedHistory = false;
+      syncFromLocation();
+    };
+    window.addEventListener('popstate', onPopState);
+    window.addEventListener('hashchange', onPopState);
+    onCleanup(() => {
+      window.removeEventListener('popstate', onPopState);
+      window.removeEventListener('hashchange', onPopState);
+    });
   });
+
+  const open = (id) => {
+    if (selectedId()) {
+      history.replaceState(null, '', crestUrl(id) + location.search);
+    } else {
+      history.pushState(null, '', crestUrl(id) + location.search);
+      pushedHistory = true;
+    }
+    setSelectedId(id);
+  };
+
+  const close = () => {
+    setSelectedId(null);
+    if (pushedHistory) {
+      pushedHistory = false;
+      history.back();
+    } else {
+      history.replaceState(null, '', HOME_URL + location.search);
+    }
+  };
+
+  const switchView = (id) => {
+    const search = id === 'gallery' ? '' : `?view=${id}`;
+    history.pushState(null, '', HOME_URL + search);
+    pushedHistory = false;
+    setSelectedId(null);
+    setView(id);
+  };
+
+  const terms = createMemo(() => searchTerms(query()));
+  const filters = () => ({ terms: terms(), group: group(), category: category(), era: era() });
+
+  const results = createMemo(() => filterFamilies(filters()));
+
+  const countBy = (override, key, ids) => {
+    const pool = filterFamilies({ ...filters(), ...override });
+    return ids.map((id) => pool.filter((r) => key(r) === id).length);
+  };
+
+  const groupOptions = createMemo(() => {
+    const counts = countBy({ group: null }, (r) => r.group.id, ALL_GROUPS.map((g) => g.id));
+    return ALL_GROUPS.map((g, i) => ({ id: g.id, label: groupLabel(g), count: counts[i] })).filter((g) => g.id !== 'other' || g.count);
+  });
+
+  const categoryOptions = createMemo(() =>
+    CATEGORIES.map((cat) => ({ id: cat, label: term('category', cat), count: filterFamilies({ ...filters(), category: cat }).length }))
+  );
+
+  const eraOptions = createMemo(() =>
+    ERA_BUCKETS.map((b) => ({ id: b.id, label: eraBucketLabel(b), count: filterFamilies({ ...filters(), era: b.id }).length }))
+  );
+
+  const sections = createMemo(() =>
+    ALL_GROUPS.map((g) => ({ group: g, items: results().filter((r) => r.group.id === g.id) })).filter((s) => s.items.length)
+  );
+
+  const visibleOrder = createMemo(() => sections().flatMap((s) => s.items));
+
+  const selectedEntry = createMemo(() => (selectedId() ? CREST_INDEX.get(selectedId()) : null));
+
+  createEffect(() => {
+    const entry = selectedEntry();
+    document.title = entry ? `${familyName(entry.family)}「${entry.crest.nameJa}」｜${t('siteTitle')}` : t('siteTitle');
+  });
+
+  const neighbours = createMemo(() => {
+    const entry = selectedEntry();
+    if (!entry) return {};
+    let list = visibleOrder();
+    let index = list.findIndex((r) => r.family === entry.family);
+    if (index === -1) {
+      list = SEARCH_INDEX.map((e) => ({ family: e.family, crest: e.family.crests[0] }));
+      index = list.findIndex((r) => r.family === entry.family);
+    }
+    return {
+      prev: list[index - 1],
+      next: list[index + 1],
+      position: `${index + 1} / ${list.length}`,
+    };
+  });
+
+  const hasFilters = () => query() || group() || category() || era();
+  const resetFilters = () => {
+    setQuery('');
+    setGroup(null);
+    setCategory(null);
+    setEra(null);
+  };
 
   return (
     <div class="container">
-      <header class="header">
-        <h1>戰國家徽圖鑑</h1>
-        <p>Sengoku Daimyo Kamon Archives</p>
-      </header>
-
-      <div class="filter-bar">
-        <For each={classes}>
-          {(cls) => (
+      <a
+        class="skip-link"
+        href="#main"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('main').focus();
+        }}
+      >
+        {t('skipLink')}
+      </a>
+      <div class="lang-switch" role="group" aria-label={t('language')}>
+        <For each={LANGS}>
+          {(l) => (
             <button
-              class={`filter-btn ${selectedClass() === cls ? 'active' : ''}`}
-              onClick={() => setSelectedClass(cls)}
+              type="button"
+              class="lang-switch__btn"
+              classList={{ 'is-active': lang() === l.id }}
+              aria-pressed={lang() === l.id}
+              lang={l.htmlLang}
+              onClick={() => setLang(l.id)}
             >
-              {cls}
+              {l.label}
             </button>
           )}
         </For>
       </div>
+      <header class="header">
+        <h1>{t('siteTitle')}</h1>
+        <p class="header__en">Sengoku Daimyo Kamon Archives</p>
+        <p class="header__stats">{t('stats', { families: KAMON_FAMILIES.length, crests: CREST_COUNT })}</p>
+      </header>
 
-      <main class="kamon-grid">
-        <For each={filteredItems()}>
-          {(kamon) => <KamonCard kamon={kamon} onSelect={setSelectedKamon} />}
+      <nav class="view-tabs" aria-label={t('viewTabs')}>
+        <For each={VIEWS}>
+          {(v) => (
+            <button
+              type="button"
+              class="view-tab"
+              classList={{ 'is-active': view() === v.id }}
+              aria-current={view() === v.id ? 'page' : undefined}
+              onClick={() => view() !== v.id && switchView(v.id)}
+            >
+              {t(v.labelKey)}
+            </button>
+          )}
         </For>
+      </nav>
+
+      <div class="toolbar">
+        <div class="search">
+          <svg class="search__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-4-4" />
+          </svg>
+          <input
+            type="search"
+            class="search__input"
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('search')}
+            value={query()}
+            onInput={(e) => setQuery(e.currentTarget.value)}
+          />
+        </div>
+        <ChipRow label={t('facetGroup')} options={groupOptions()} value={group()} onChange={setGroup} />
+        <ChipRow label={t('facetEra')} options={eraOptions()} value={era()} onChange={setEra} />
+        <ChipRow label={t('facetCategory')} options={categoryOptions()} value={category()} onChange={setCategory} />
+        <div class="toolbar__status" aria-live="polite">
+          <span>{t('showing', { count: results().length })}</span>
+          <Show when={hasFilters()}>
+            <button type="button" class="link-btn" onClick={resetFilters}>{t('clearFilters')}</button>
+          </Show>
+        </div>
+      </div>
+
+      <main id="main" tabindex="-1">
+        <Switch>
+          <Match when={view() === 'gallery'}>
+            <GalleryView sections={sections()} onOpen={open} onReset={resetFilters} />
+          </Match>
+          <Match when={view() === 'map'}>
+            <MapView results={results()} onOpen={open} />
+          </Match>
+        </Switch>
       </main>
 
-      <Show when={selectedKamon()}>
-        <Modal kamon={selectedKamon()} onClose={() => setSelectedKamon(null)} />
+      <Show when={selectedEntry()}>
+        <Portal>
+          <Detail
+            entry={selectedEntry()}
+            prev={neighbours().prev}
+            next={neighbours().next}
+            position={neighbours().position}
+            onOpen={open}
+            onClose={close}
+          />
+        </Portal>
       </Show>
 
-      <footer style={{ "text-align": "center", "margin-top": "8rem", color: "var(--text-secondary)", "font-size": "0.9rem", "letter-spacing": "0.1em" }}>
-        <p>© 2026 Sengoku Kamon Archives. Crafted with Solid.js. Minimalist & Premium Design.</p>
+      <footer class="footer">
+        <p>{t('footer')}</p>
+        <p>© 2026 Sengoku Kamon Archives.</p>
       </footer>
     </div>
   );
