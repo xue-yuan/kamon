@@ -1,19 +1,17 @@
 export const GROUPS = [
-  { id: 'tenka', label: '天下人・將軍家', note: '統一天下或開創幕府的家族', ranks: ['天下人', '將軍家'] },
-  { id: 'daimyo', label: '戰國大名', note: '割據一方的戰國大名與豐臣五大老', ranks: ['戰國大名', '五大老'] },
+  { id: 'tenka', ranks: ['tenkabito', 'shogunHouse'] },
+  { id: 'daimyo', ranks: ['sengokuDaimyo', 'goTairo'] },
   {
     id: 'retainer',
-    label: '家臣・武將',
-    note: '織田、豐臣、德川、毛利等麾下的名將與重臣',
-    ranks: ['五奉行', '德川四天王', '織田家臣', '豐臣家臣', '賤岳七本槍', '毛利家臣', '石田家臣', '劍術家', '雜賀衆', '武將'],
+    ranks: ['goBugyo', 'tokugawaShitenno', 'odaRetainer', 'toyotomiRetainer', 'shichihonYari', 'moriRetainer', 'ishidaRetainer', 'swordsman', 'saikaShu'],
   },
-  { id: 'shugo', label: '室町守護', note: '三管領、四職與各國守護大名', ranks: ['三管領', '四職', '守護大名'] },
-  { id: 'ancient', label: '源平・南北朝', note: '源平之爭與南北朝時代的武家名門', ranks: ['源氏', '平氏', '南朝武將'] },
-  { id: 'court', label: '皇室・公家', note: '皇室、五攝家與古代貴族', ranks: ['天皇家', '四姓', '名門公家', '五攝家'] },
-  { id: 'temple', label: '寺社', note: '寺院與宗教勢力', ranks: ['一向宗'] },
+  { id: 'shugo', ranks: ['sanKanrei', 'shishiki', 'shugoDaimyo'] },
+  { id: 'ancient', ranks: ['genji', 'heishi', 'southernCourt'] },
+  { id: 'court', ranks: ['imperialHouse', 'shisei', 'courtNoble', 'gosekke'] },
+  { id: 'temple', ranks: ['ikkoShu'] },
 ];
 
-const OTHER_GROUP = { id: 'other', label: '其他', note: '', ranks: [] };
+const OTHER_GROUP = { id: 'other', ranks: [] };
 
 const GROUP_BY_RANK = new Map(GROUPS.flatMap((g) => g.ranks.map((rank) => [rank, g])));
 
@@ -23,7 +21,42 @@ export function groupOf(family) {
 
 export const ALL_GROUPS = [...GROUPS, OTHER_GROUP];
 
-export const CATEGORIES = ['植物紋', '動物紋', '器物紋', '天文 / 自然紋', '幾何 / 文樣紋', '文字紋'];
+export const RANKS = GROUPS.flatMap((g) => g.ranks);
+
+export const CLASSES = ['buke', 'kuge', 'imperial', 'religious'];
+
+export const CATEGORIES = ['plant', 'animal', 'object', 'nature', 'geometric', 'character'];
+
+export const USAGES = ['jomon', 'kaemon', 'jimon'];
+
+export const PERIODS = ['ancient', 'nara', 'heian', 'kamakura', 'nanbokucho', 'muromachi', 'sengoku', 'edo', 'modern', 'contemporary'];
+
+export const ERA_BUCKETS = [
+  { id: 'heian', periods: ['ancient', 'nara', 'heian'] },
+  { id: 'kamakura', periods: ['kamakura', 'nanbokucho'] },
+  { id: 'muromachi', periods: ['muromachi'] },
+  { id: 'sengoku', periods: ['sengoku'] },
+  { id: 'edo', periods: ['edo', 'modern', 'contemporary'] },
+];
+
+// `era` is [from] or [from, to]; returns their indexes in PERIODS, or null if invalid
+export function parseEra(era) {
+  if (!Array.isArray(era) || !era.length || era.length > 2) return null;
+  const span = era.map((p) => PERIODS.indexOf(p));
+  if (span.includes(-1) || span[0] > span[span.length - 1]) return null;
+  return [span[0], span[span.length - 1]];
+}
+
+export function eraBucketsOf(era) {
+  const span = parseEra(era);
+  if (!span) return [];
+  return ERA_BUCKETS.filter((bucket) =>
+    bucket.periods.some((p) => {
+      const i = PERIODS.indexOf(p);
+      return i >= span[0] && i <= span[1];
+    })
+  ).map((bucket) => bucket.id);
+}
 
 const VARIANTS = {
   條: '条', 國: '国', 澤: '沢', 齋: '斎', 齊: '斉', 淺: '浅', 內: '内', 鄉: '郷', 黑: '黒',
@@ -48,31 +81,4 @@ export function normalize(text) {
 
 export function searchTerms(query) {
   return (query || '').split(/\s+/).map(normalize).filter(Boolean);
-}
-
-export const PERIODS = ['古代', '奈良', '平安', '鎌倉', '南北朝', '室町', '戰國', '江戶', '近代', '現代'];
-
-export const ERA_BUCKETS = [
-  { id: 'heian', label: '平安以前', periods: ['古代', '奈良', '平安'] },
-  { id: 'kamakura', label: '鎌倉・南北朝', periods: ['鎌倉', '南北朝'] },
-  { id: 'muromachi', label: '室町', periods: ['室町'] },
-  { id: 'sengoku', label: '戰國', periods: ['戰國'] },
-  { id: 'edo', label: '江戶以後', periods: ['江戶', '近代', '現代'] },
-];
-
-export function parseEra(era) {
-  const parts = (era || '').split('〜').map((p) => PERIODS.indexOf(p.trim()));
-  if (!parts.length || parts.length > 2 || parts.some((i) => i === -1)) return null;
-  return [parts[0], parts[parts.length - 1]];
-}
-
-export function eraBucketsOf(era) {
-  const span = parseEra(era);
-  if (!span) return [];
-  return ERA_BUCKETS.filter((bucket) =>
-    bucket.periods.some((p) => {
-      const i = PERIODS.indexOf(p);
-      return i >= span[0] && i <= span[1];
-    })
-  ).map((bucket) => bucket.id);
 }

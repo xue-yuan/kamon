@@ -4,7 +4,7 @@ import { KAMON_FAMILIES } from './data';
 import { ALL_GROUPS, CATEGORIES, ERA_BUCKETS, searchTerms } from './taxonomy';
 import { CREST_INDEX, CREST_COUNT, SEARCH_INDEX, filterFamilies } from './catalog';
 import { HOME_URL, crestUrl, crestIdFromLocation } from './routes';
-import { LANGS, lang, setLang, t, term, groupLabel, eraBucketLabel, familyName } from './i18n';
+import { LANGS, lang, setLang, t, label, groupLabel, familyName } from './i18n';
 import { Detail } from './components/Detail';
 import { GalleryView } from './views/GalleryView';
 import { MapView } from './views/MapView';
@@ -32,7 +32,7 @@ function ChipRow(props) {
           aria-pressed={!props.value}
           onClick={() => props.onChange(null)}
         >
-          {t('all')}
+          {t('ui.all')}
         </button>
         <For each={props.options}>
           {(option) => (
@@ -127,11 +127,11 @@ function App() {
   });
 
   const categoryOptions = createMemo(() =>
-    CATEGORIES.map((cat) => ({ id: cat, label: term('category', cat), count: filterFamilies({ ...filters(), category: cat }).length }))
+    CATEGORIES.map((cat) => ({ id: cat, label: label('category', cat), count: filterFamilies({ ...filters(), category: cat }).length }))
   );
 
   const eraOptions = createMemo(() =>
-    ERA_BUCKETS.map((b) => ({ id: b.id, label: eraBucketLabel(b), count: filterFamilies({ ...filters(), era: b.id }).length }))
+    ERA_BUCKETS.map((b) => ({ id: b.id, label: label('eraBucket', b.id), count: filterFamilies({ ...filters(), era: b.id }).length }))
   );
 
   const sections = createMemo(() =>
@@ -144,7 +144,7 @@ function App() {
 
   createEffect(() => {
     const entry = selectedEntry();
-    document.title = entry ? `${familyName(entry.family)}「${entry.crest.nameJa}」｜${t('siteTitle')}` : t('siteTitle');
+    document.title = entry ? `${familyName(entry.family)}「${entry.crest.nameJa}」｜${t('ui.siteTitle')}` : t('ui.siteTitle');
   });
 
   const neighbours = createMemo(() => {
@@ -181,9 +181,9 @@ function App() {
           document.getElementById('main').focus();
         }}
       >
-        {t('skipLink')}
+        {t('ui.skipLink')}
       </a>
-      <div class="lang-switch" role="group" aria-label={t('language')}>
+      <div class="lang-switch" role="group" aria-label={t('ui.language')}>
         <For each={LANGS}>
           {(l) => (
             <button
@@ -191,7 +191,7 @@ function App() {
               class="lang-switch__btn"
               classList={{ 'is-active': lang() === l.id }}
               aria-pressed={lang() === l.id}
-              lang={l.htmlLang}
+              lang={l.id}
               onClick={() => setLang(l.id)}
             >
               {l.label}
@@ -200,12 +200,12 @@ function App() {
         </For>
       </div>
       <header class="header">
-        <h1>{t('siteTitle')}</h1>
+        <h1>{t('ui.siteTitle')}</h1>
         <p class="header__en">Sengoku Daimyo Kamon Archives</p>
-        <p class="header__stats">{t('stats', { families: KAMON_FAMILIES.length, crests: CREST_COUNT })}</p>
+        <p class="header__stats">{t('ui.stats', { families: KAMON_FAMILIES.length, crests: CREST_COUNT })}</p>
       </header>
 
-      <nav class="view-tabs" aria-label={t('viewTabs')}>
+      <nav class="view-tabs" aria-label={t('ui.viewTabs')}>
         <For each={VIEWS}>
           {(v) => (
             <button
@@ -215,7 +215,7 @@ function App() {
               aria-current={view() === v.id ? 'page' : undefined}
               onClick={() => view() !== v.id && switchView(v.id)}
             >
-              {t(v.labelKey)}
+              {t(`ui.${v.labelKey}`)}
             </button>
           )}
         </For>
@@ -230,19 +230,19 @@ function App() {
           <input
             type="search"
             class="search__input"
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('search')}
+            placeholder={t('ui.searchPlaceholder')}
+            aria-label={t('ui.search')}
             value={query()}
             onInput={(e) => setQuery(e.currentTarget.value)}
           />
         </div>
-        <ChipRow label={t('facetGroup')} options={groupOptions()} value={group()} onChange={setGroup} />
-        <ChipRow label={t('facetEra')} options={eraOptions()} value={era()} onChange={setEra} />
-        <ChipRow label={t('facetCategory')} options={categoryOptions()} value={category()} onChange={setCategory} />
+        <ChipRow label={t('ui.facetGroup')} options={groupOptions()} value={group()} onChange={setGroup} />
+        <ChipRow label={t('ui.facetEra')} options={eraOptions()} value={era()} onChange={setEra} />
+        <ChipRow label={t('ui.facetCategory')} options={categoryOptions()} value={category()} onChange={setCategory} />
         <div class="toolbar__status" aria-live="polite">
-          <span>{t('showing', { count: results().length })}</span>
+          <span>{t('ui.showing', { count: results().length })}</span>
           <Show when={hasFilters()}>
-            <button type="button" class="link-btn" onClick={resetFilters}>{t('clearFilters')}</button>
+            <button type="button" class="link-btn" onClick={resetFilters}>{t('ui.clearFilters')}</button>
           </Show>
         </div>
       </div>
@@ -272,7 +272,7 @@ function App() {
       </Show>
 
       <footer class="footer">
-        <p>{t('footer')}</p>
+        <p>{t('ui.footer')}</p>
         <p>© 2026 Sengoku Kamon Archives.</p>
       </footer>
     </div>

@@ -1,13 +1,13 @@
 import { For, Show } from 'solid-js';
 import { KamonSvg } from '../components/KamonSvg';
-import { t, term, familyName, personName, groupLabel, groupNote } from '../i18n';
+import { t, label, familyName, personName, groupLabel, groupNote } from '../i18n';
 
 function FamilyCard(props) {
   return (
     <button type="button" class="kamon-card" onClick={() => props.onOpen(props.crest.id)}>
       <Show when={props.family.crests.length > 1}>
-        <span class="kamon-card__count" title={t('crestCountTitle', { count: props.family.crests.length })}>
-          {t('crestCount', { count: props.family.crests.length })}
+        <span class="kamon-card__count" title={t('ui.crestCountTitle', { count: props.family.crests.length })}>
+          {t('ui.crestCount', { count: props.family.crests.length })}
         </span>
       </Show>
       <div class="kamon-card__art">
@@ -16,8 +16,8 @@ function FamilyCard(props) {
       <div class="kamon-card__clan">{familyName(props.family)}</div>
       <div class="kamon-card__crest">
         <span lang="ja">{props.crest.nameJa}</span>
-        <Show when={props.crest.usage && props.crest.usage !== '定紋'}>
-          <span class="kamon-card__usage">{term('usage', props.crest.usage)}</span>
+        <Show when={props.crest.usage !== 'jomon'}>
+          <span class="kamon-card__usage">{label('usage', props.crest.usage)}</span>
         </Show>
       </div>
       <div class="kamon-card__person">{personName(props.family)}</div>
@@ -31,8 +31,8 @@ export function GalleryView(props) {
       when={props.sections.length}
       fallback={
         <div class="empty">
-          <p>{t('noResults')}</p>
-          <button type="button" class="link-btn" onClick={props.onReset}>{t('clearFilters')}</button>
+          <p>{t('ui.noResults')}</p>
+          <button type="button" class="link-btn" onClick={props.onReset}>{t('ui.clearFilters')}</button>
         </div>
       }
     >

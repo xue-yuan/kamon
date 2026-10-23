@@ -3,13 +3,24 @@
 // Errors fail the run; warnings point at things worth a look (e.g. two
 // different crests sharing identical artwork).
 import { KAMON_FAMILIES } from '../src/data.js';
-import { GROUPS, CATEGORIES, parseEra } from '../src/taxonomy.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { ALL_GROUPS, ERA_BUCKETS, RANKS, CLASSES, CATEGORIES, USAGES, PERIODS, parseEra } from '../src/taxonomy.js';
 import { analyzeSubpaths } from '../src/splitPath.js';
 
-const CLASSES = ['武家', '公家', '皇室', '宗教'];
-const USAGES = ['定紋', '替紋', '寺紋'];
+const LOCALE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'locales');
+const DEFAULT_LANG = 'zh-Hant';
+const LOCALES = Object.fromEntries(
+  fs.readdirSync(LOCALE_DIR).filter((f) => f.endsWith('.json')).map((f) => [f.replace(/\.json$/, ''), JSON.parse(fs.readFileSync(path.join(LOCALE_DIR, f), 'utf8'))])
+);
+const TRANSLATIONS = Object.keys(LOCALES).filter((l) => l !== DEFAULT_LANG);
+const REFERENCE_SITES = Object.keys(LOCALES[DEFAULT_LANG].reference);
+
+// Translated record fields: [field, required only when this returns true]
+const FAMILY_I18N = [['clan'], ['daimyo'], ['parentNote', (f) => f.parentNote], ['seat', (f) => f.seat]];
+const CREST_I18N = [['description'], ['sourceNote', (c) => c.source?.note]];
 const SOURCE_TYPES = ['commons', 'derived', 'original'];
-const RANKS = new Set(GROUPS.flatMap((g) => g.ranks));
 
 const errors = [];
 const warnings = [];
@@ -79,23 +90,26 @@ for (const family of KAMON_FAMILIES) {
 
   for (const key of ['clan', 'daimyo']) if (isBlank(family[key])) error(where, `missing ${key}`);
   if (!CLASSES.includes(family.class)) error(where, `unknown class "${family.class}"`);
-  if (!RANKS.has(family.rank)) error(where, `rank "${family.rank}" is not in any group (src/taxonomy.js)`);
-  if (!parseEra(family.era)) error(where, `era "${family.era}" does not parse`);
+  if (!RANKS.includes(family.rank)) error(where, `rank "${family.rank}" is not in any group (src/taxonomy.js)`);
+  if (!parseEra(family.era)) error(where, `era ${JSON.stringify(family.era)} should be [from] or [from, to] of PERIODS (src/taxonomy.js)`);
 
   if (!Array.isArray(family.references) || !family.references.length) {
     error(where, 'needs at least one reference');
   } else {
     for (const ref of family.references) {
       if (isBlank(ref.title) || !/^https:\/\//.test(ref.url || '')) error(where, 'reference needs a title and an https url');
+      if (!REFERENCE_SITES.includes(ref.site)) error(where, `unknown reference site "${ref.site}"`);
     }
   }
 
   if (family.parent !== undefined && isBlank(family.parentNote)) error(where, 'parent needs a parentNote');
 
   // Japanese versions of the shown text (see src/i18n.js)
-  if (isBlank(family.ja?.clan) || isBlank(family.ja?.daimyo)) error(where, 'needs ja.clan and ja.daimyo');
-  if (family.parentNote && isBlank(family.ja?.parentNote)) error(where, 'needs ja.parentNote');
-  if (family.seat && isBlank(family.ja?.seat)) error(where, 'needs ja.seat');
+  for (const lang of TRANSLATIONS) {
+    for (const [field, when] of FAMILY_I18N) {
+      if ((!when || when(family)) && isBlank(family.i18n?.[lang]?.[field])) error(where, `needs i18n.${lang}.${field}`);
+    }
+  }
 
   if (family.seat) {
     const { name, lat, lon } = family.seat;
@@ -116,8 +130,11 @@ for (const family of KAMON_FAMILIES) {
     crestIds.add(crest.id);
 
     for (const key of ['nameJa', 'nameEn', 'description']) if (isBlank(crest[key])) error(cw, `missing ${key}`);
-    if (isBlank(crest.ja?.description)) error(cw, 'needs ja.description');
-    if (crest.source?.note && isBlank(crest.ja?.sourceNote)) error(cw, 'needs ja.sourceNote');
+    for (const lang of TRANSLATIONS) {
+      for (const [field, when] of CREST_I18N) {
+        if ((!when || when(crest)) && isBlank(crest.i18n?.[lang]?.[field])) error(cw, `needs i18n.${lang}.${field}`);
+      }
+    }
     if (!CATEGORIES.includes(crest.category)) error(cw, `unknown category "${crest.category}"`);
     if (!USAGES.includes(crest.usage)) error(cw, `unknown usage "${crest.usage}"`);
     if (crest.fillRule !== undefined && !['evenodd', 'nonzero'].includes(crest.fillRule)) {
@@ -138,6 +155,34 @@ for (const family of KAMON_FAMILIES) {
     owners.push(crest);
     pathOwners.set(crest.path, owners);
   }
+}
+
+// Locale files: every language has the same keys, and every vocabulary id
+// used by the data has a label
+const keysOf = (node, prefix = '') =>
+  Object.entries(node).flatMap(([k, v]) => (v && typeof v === 'object' ? keysOf(v, `${prefix}${k}.`) : [`${prefix}${k}`]));
+const defaultKeys = new Set(keysOf(LOCALES[DEFAULT_LANG]));
+const valueAt = (messages, key) => key.split('.').reduce((node, part) => node?.[part], messages);
+const placeholders = (text) => [...String(text).matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort().join(',');
+for (const [lang, messages] of Object.entries(LOCALES)) {
+  const keys = new Set(keysOf(messages));
+  for (const k of defaultKeys) if (!keys.has(k)) error(`locale ${lang}`, `missing "${k}"`);
+  for (const k of keys) if (!defaultKeys.has(k)) error(`locale ${lang}`, `"${k}" is not in ${DEFAULT_LANG}`);
+  for (const k of keys) {
+    const text = valueAt(messages, k);
+    // Templates use {{name}} (@solid-primitives/i18n); a single-brace {name} is never filled in
+    if (/(^|[^{])\{\w+\}(?!\})/.test(text)) error(`locale ${lang}`, `"${k}" uses {name}; placeholders are written {{name}}`);
+    if (defaultKeys.has(k) && placeholders(text) !== placeholders(valueAt(LOCALES[DEFAULT_LANG], k))) {
+      error(`locale ${lang}`, `"${k}" has different placeholders than ${DEFAULT_LANG}`);
+    }
+  }
+}
+const VOCABULARY = {
+  rank: RANKS, class: CLASSES, category: CATEGORIES, usage: USAGES, period: PERIODS,
+  eraBucket: ERA_BUCKETS.map((b) => b.id), group: ALL_GROUPS.map((g) => g.id),
+};
+for (const [kind, ids] of Object.entries(VOCABULARY)) {
+  for (const id of ids) if (!LOCALES[DEFAULT_LANG][kind]?.[id]) error(`locale ${DEFAULT_LANG}`, `no label for ${kind}.${id}`);
 }
 
 // Second pass: references between families

@@ -1,0 +1,152 @@
+{
+  "ui": {
+    "siteTitle": "戦国家紋図鑑",
+    "siteDescription": "戦国大名・公家・寺社の家紋を収録した図鑑。家紋の由来、家の系譜、同系の家紋、画像の出典を掲載。",
+    "stats": "{{families}} 家・{{crests}} 紋を収録",
+    "skipLink": "家紋一覧へ移動",
+    "viewTabs": "表示",
+    "viewGallery": "図鑑",
+    "viewMap": "地図",
+    "language": "言語",
+    "searchPlaceholder": "家名・人物・家紋・城名で検索（例：真田、Nobunaga、桐、大坂城）",
+    "search": "検索",
+    "facetGroup": "身分",
+    "facetEra": "時代",
+    "facetCategory": "紋様",
+    "all": "すべて",
+    "showing": "{{count}} 家を表示",
+    "clearFilters": "絞り込みを解除",
+    "noResults": "条件に合う家紋が見つかりません。",
+    "crestCount": "{{count}} 紋",
+    "crestCountTitle": "家紋 {{count}} 点",
+    "footer": "家紋画像の多くは Wikimedia Commons より。各画像の作者とライセンスは詳細画面に記載しています。当サイトで変換した図形は原図のライセンス（主に CC BY-SA）に従って公開しています。地図の輪郭は Natural Earth より。",
+    "close": "閉じる",
+    "switchCrest": "家紋を切り替え",
+    "share": "共有",
+    "copied": "リンクをコピーしました",
+    "copyPrompt": "このリンクをコピーしてください：",
+    "representative": "代表的人物",
+    "rank": "身分",
+    "era": "時代",
+    "seat": "本拠地",
+    "pattern": "紋様",
+    "fallbackDescription": "{{clan}}の家紋。",
+    "lineage": "系譜",
+    "branches": "分家",
+    "relatedCrests": "同系の家紋",
+    "references": "参考資料",
+    "imageSource": "画像の出典",
+    "sourceUnknown": "出典未記載",
+    "basedOn": "原図",
+    "familyNav": "家を切り替え",
+    "prev": "前へ",
+    "next": "次へ",
+    "mapHint": "{{count}} 家の本拠地（代表的人物の時代の主な居城・居所）を表示しています。数字の付いた印をクリックするとその地域を拡大でき、拡大後はドラッグで移動できます。",
+    "mapCluster": "{{count}} 家：{{names}}",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "zoomReset": "全体",
+    "listSeparator": "、"
+  },
+  "group": {
+    "tenka": {
+      "label": "天下人・将軍家",
+      "note": "天下を統一し、または幕府を開いた家"
+    },
+    "daimyo": {
+      "label": "戦国大名",
+      "note": "各地に割拠した戦国大名と豊臣五大老"
+    },
+    "retainer": {
+      "label": "家臣・武将",
+      "note": "織田・豊臣・徳川・毛利などに仕えた名将と重臣"
+    },
+    "shugo": {
+      "label": "室町守護",
+      "note": "三管領・四職と各国の守護大名"
+    },
+    "ancient": {
+      "label": "源平・南北朝",
+      "note": "源平の争乱と南北朝時代の武家の名門"
+    },
+    "court": {
+      "label": "皇室・公家",
+      "note": "皇室・五摂家と古代の貴族"
+    },
+    "temple": {
+      "label": "寺社",
+      "note": "寺院と宗教勢力"
+    },
+    "other": {
+      "label": "その他",
+      "note": ""
+    }
+  },
+  "eraBucket": {
+    "heian": "平安以前",
+    "kamakura": "鎌倉・南北朝",
+    "muromachi": "室町",
+    "sengoku": "戦国",
+    "edo": "江戸以降"
+  },
+  "period": {
+    "ancient": "古代",
+    "nara": "奈良",
+    "heian": "平安",
+    "kamakura": "鎌倉",
+    "nanbokucho": "南北朝",
+    "muromachi": "室町",
+    "sengoku": "戦国",
+    "edo": "江戸",
+    "modern": "近代",
+    "contemporary": "現代"
+  },
+  "rank": {
+    "tenkabito": "天下人",
+    "shogunHouse": "将軍家",
+    "sengokuDaimyo": "戦国大名",
+    "goTairo": "五大老",
+    "goBugyo": "五奉行",
+    "tokugawaShitenno": "徳川四天王",
+    "odaRetainer": "織田家臣",
+    "toyotomiRetainer": "豊臣家臣",
+    "shichihonYari": "賤ヶ岳七本槍",
+    "moriRetainer": "毛利家臣",
+    "ishidaRetainer": "石田家臣",
+    "swordsman": "剣術家",
+    "saikaShu": "雑賀衆",
+    "sanKanrei": "三管領",
+    "shishiki": "四職",
+    "shugoDaimyo": "守護大名",
+    "genji": "源氏",
+    "heishi": "平氏",
+    "southernCourt": "南朝方の武将",
+    "imperialHouse": "天皇家",
+    "shisei": "四姓",
+    "courtNoble": "名門公家",
+    "gosekke": "五摂家",
+    "ikkoShu": "一向宗"
+  },
+  "class": {
+    "buke": "武家",
+    "kuge": "公家",
+    "imperial": "皇室",
+    "religious": "宗教"
+  },
+  "category": {
+    "plant": "植物紋",
+    "animal": "動物紋",
+    "object": "器物紋",
+    "nature": "天文・自然紋",
+    "geometric": "幾何・文様紋",
+    "character": "文字紋"
+  },
+  "usage": {
+    "jomon": "定紋",
+    "kaemon": "替紋",
+    "jimon": "寺紋"
+  },
+  "reference": {
+    "wikipediaJa": "{{title}}（ウィキペディア）"
+  }
+}

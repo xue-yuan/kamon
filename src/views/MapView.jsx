@@ -124,7 +124,7 @@ export function MapView(props) {
   return (
     <div class="map-view">
       <p class="map-view__hint">
-        {t('mapHint', { count: placed().length })}
+        {t('ui.mapHint', { count: placed().length })}
       </p>
       <div
         class="map-frame"
@@ -149,7 +149,7 @@ export function MapView(props) {
               style={{ left: `${cluster.left * 100}%`, top: `${cluster.top * 100}%` }}
               aria-label={
                 cluster.items.length > 1
-                  ? t('mapCluster', { count: cluster.items.length, names: cluster.items.map((i) => familyName(i.family)).join(t('listSeparator')) })
+                  ? t('ui.mapCluster', { count: cluster.items.length, names: cluster.items.map((i) => familyName(i.family)).join(t('ui.listSeparator')) })
                   : label(cluster.items[0])
               }
               onClick={(e) => {
@@ -190,15 +190,15 @@ export function MapView(props) {
           )}
         </Show>
         <div class="map-controls" onClick={(e) => e.stopPropagation()}>
-          <button type="button" class="map-controls__btn" aria-label={t('zoomIn')} disabled={zoom() >= MAX_ZOOM} onClick={() => zoomTo(zoom() * 2)}>＋</button>
-          <button type="button" class="map-controls__btn" aria-label={t('zoomOut')} disabled={zoom() <= 1} onClick={() => zoomTo(zoom() / 2)}>－</button>
+          <button type="button" class="map-controls__btn" aria-label={t('ui.zoomIn')} disabled={zoom() >= MAX_ZOOM} onClick={() => zoomTo(zoom() * 2)}>＋</button>
+          <button type="button" class="map-controls__btn" aria-label={t('ui.zoomOut')} disabled={zoom() <= 1} onClick={() => zoomTo(zoom() / 2)}>－</button>
           <Show when={zoom() > 1}>
             <button
               type="button"
               class="map-controls__btn map-controls__btn--text"
               onClick={() => zoomTo(1, { x: FULL.x + FULL.w / 2, y: FULL.y + FULL.h / 2 })}
             >
-              {t('zoomReset')}
+              {t('ui.zoomReset')}
             </button>
           </Show>
         </div>

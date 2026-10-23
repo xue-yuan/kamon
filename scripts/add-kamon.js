@@ -182,7 +182,13 @@ function processSvg(rawSvg) {
 }
 
 const FAMILY_FIELDS = ['clan', 'class', 'rank', 'era', 'daimyo'];
-const CREST_FIELDS = ['category', 'motif', 'usage', 'nameJa', 'nameEn', 'description', 'source', 'ja'];
+const CREST_FIELDS = ['category', 'motif', 'usage', 'nameJa', 'nameEn', 'description', 'source'];
+
+// Translations live under record.i18n[lang]; merge rather than replace them
+const mergeI18n = (record, lang, fields) => {
+    if (!fields) return;
+    record.i18n = { ...record.i18n, [lang]: { ...record.i18n?.[lang], ...fields } };
+};
 
 function readFamilies(dataFilePath) {
     if (!fs.existsSync(dataFilePath)) {
@@ -212,8 +218,8 @@ function pick(values, fields) {
 }
 
 // Three modes:
-//   new family:      --id <id> (creates the family and its 定紋 with the same id)
-//   extra crest:     --family <family-id> --id <crest-id> (e.g. a 替紋)
+//   new family:      --id <id> (creates the family and its main crest with the same id)
+//   extra crest:     --family <family-id> --id <crest-id> (e.g. an alternate crest)
 //   replace:         --id <crest-id> --replace (art plus any fields passed)
 function updateDataJs(values, art) {
     const dataFilePath = path.join(projectRoot, 'src', 'data.js');
@@ -235,7 +241,8 @@ function updateDataJs(values, art) {
             throw new Error(`Kamon with ID '${values.id}' does not exist, nothing to replace.`);
         }
         Object.assign(existing.family, pick(values, FAMILY_FIELDS));
-        if (values.familyJa) existing.family.ja = { ...existing.family.ja, ...values.familyJa };
+        mergeI18n(existing.family, 'ja', values.familyJa);
+        mergeI18n(existing.crest, 'ja', values.crestJa);
         Object.assign(existing.crest, pick(values, CREST_FIELDS), art);
         verb = 'updated';
     } else {
@@ -244,16 +251,16 @@ function updateDataJs(values, art) {
         }
         const crest = {
             id: values.id,
-            category: values.category || '未分類',
+            category: values.category,
             motif: values.motif,
-            usage: values.usage || (values.family ? '替紋' : '定紋'),
+            usage: values.usage || (values.family ? 'kaemon' : 'jomon'),
             nameJa: values.nameJa,
             nameEn: values.nameEn || '',
             description: values.description || '',
             source: values.source,
-            ja: values.ja,
             ...art
         };
+        mergeI18n(crest, 'ja', values.crestJa);
         if (values.family) {
             const family = families.find((f) => f.id === values.family);
             if (!family) {
@@ -261,16 +268,20 @@ function updateDataJs(values, art) {
             }
             family.crests.push(crest);
         } else {
-            families.push({
+            const family = {
                 id: values.id,
                 clan: values.clan || '',
-                class: values.class || '武家',
+                class: values.class || 'buke',
                 rank: values.rank || '',
-                era: values.era || '',
+                era: values.era,
                 daimyo: values.daimyo || '',
-                ja: values.familyJa,
+                references: values.wikipedia
+                    ? [{ site: 'wikipediaJa', title: values.wikipedia, url: `https://ja.wikipedia.org/wiki/${encodeURIComponent(values.wikipedia)}` }]
+                    : [],
                 crests: [crest]
-            });
+            };
+            mergeI18n(family, 'ja', values.familyJa);
+            families.push(family);
         }
         verb = 'added';
     }
@@ -301,6 +312,7 @@ async function main() {
         description: { type: 'string' },
         'source-file': { type: 'string' },
         'source-note': { type: 'string' },
+        wikipedia: { type: 'string' },
         'ja-clan': { type: 'string' },
         'ja-daimyo': { type: 'string' },
         'ja-description': { type: 'string' },
@@ -315,8 +327,10 @@ async function main() {
         console.error("       npm run add-kamon -- (--url <svg-url> | --file <svg-path>) --family <family-id> --id <crest-id> --nameJa <japanese-name> [crest options...]");
         console.error("       npm run add-kamon -- (--url <svg-url> | --file <svg-path>) --id <crest-id> --replace [fields to change...]");
         console.error("Required: --url or --file, --id, and --nameJa unless --replace is given");
-        console.error("Family options: --clan, --class (default: 武家), --rank, --era, --daimyo");
-        console.error("Crest options: --nameEn, --category, --motif, --usage (default: 定紋, or 替紋 with --family), --description");
+        console.error("Family options: --clan, --class (default: buke), --rank, --era (e.g. sengoku or sengoku,edo), --daimyo");
+        console.error("Crest options: --nameEn, --category, --motif, --usage (default: jomon, or kaemon with --family), --description");
+        console.error("Reference: --wikipedia <article title on ja.wikipedia.org> (new family)");
+        console.error("Vocabulary ids (class, rank, era, category, usage) are listed in src/taxonomy.js");
         console.error("Japanese: --ja-clan, --ja-daimyo (new family), --ja-description, --ja-source-note (with --source-note)");
         console.error("Source: taken from the Commons page when --url is a File: page; with --file pass --source-file <Commons file name>");
         console.error("        for art taken from Commons, or --source-note <text> (plus optional --source-file) for art drawn or redrawn here");
@@ -344,7 +358,8 @@ async function main() {
             ...(values['ja-description'] ? { description: values['ja-description'] } : {}),
             ...(values['ja-source-note'] ? { sourceNote: values['ja-source-note'] } : {})
         };
-        if (Object.keys(jaCrest).length) values.ja = jaCrest;
+        if (Object.keys(jaCrest).length) values.crestJa = jaCrest;
+        if (values.era) values.era = values.era.split(',').map((p) => p.trim());
         if (values['ja-clan'] || values['ja-daimyo']) {
             values.familyJa = {
                 ...(values['ja-clan'] ? { clan: values['ja-clan'] } : {}),

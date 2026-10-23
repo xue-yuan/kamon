@@ -22,8 +22,10 @@ const base = process.env.BASE_PATH || '/';
 const site = (process.env.SITE_URL || '').replace(/\/$/, '');
 const absolute = (p) => (site ? site + p : p);
 
-const SITE_TITLE = '戰國家徽圖鑑';
-const SITE_DESCRIPTION = '收錄戰國大名、公家與寺社家紋的圖鑑：家紋由來、家族系譜、同系紋樣與圖片來源。';
+// Share pages are in the default language
+const messages = JSON.parse(fs.readFileSync(path.join(root, 'src', 'locales', 'zh-Hant.json'), 'utf8'));
+const SITE_TITLE = messages.ui.siteTitle;
+const SITE_DESCRIPTION = messages.ui.siteDescription;
 
 const escape = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

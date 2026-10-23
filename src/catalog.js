@@ -1,5 +1,6 @@
 import { KAMON_FAMILIES } from './data';
 import { groupOf, normalize, eraBucketsOf } from './taxonomy';
+import { allLabels } from './i18n';
 
 export const FAMILY_INDEX = new Map(KAMON_FAMILIES.map((family) => [family.id, family]));
 
@@ -15,9 +16,16 @@ export const SEARCH_INDEX = KAMON_FAMILIES.map((family) => ({
   group: groupOf(family),
   eras: eraBucketsOf(family.era),
   familyText: normalize(
-    [family.id, family.clan, family.daimyo, family.rank, family.class, family.era, family.seat?.name, family.ja?.clan, family.ja?.daimyo, family.ja?.seat].join(' ')
+    [
+      family.id, family.clan, family.daimyo, family.seat?.name,
+      ...Object.values(family.i18n || {}).flatMap((tr) => [tr.clan, tr.daimyo, tr.seat]),
+      ...allLabels('rank', family.rank), ...allLabels('class', family.class),
+      ...family.era.flatMap((p) => allLabels('period', p)),
+    ].join(' ')
   ),
-  crestTexts: family.crests.map((c) => normalize([c.id, c.nameJa, c.nameEn, c.category, c.usage, c.motif].join(' '))),
+  crestTexts: family.crests.map((c) =>
+    normalize([c.id, c.nameJa, c.nameEn, c.motif, ...allLabels('category', c.category), ...allLabels('usage', c.usage)].join(' '))
+  ),
 }));
 
 export function matchEntry(entry, { terms = [], group = null, category = null, era = null }) {
